@@ -19,6 +19,12 @@ Or in one step:
 brew install darox/swift-audio-switcher/swift-audio-switcher
 ```
 
+### Mint
+
+```sh
+mint install darox/swift-audio-switcher
+```
+
 ### From source
 
 ```sh
