@@ -6,19 +6,26 @@ Use it with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
 
 ## Install
 
+### Homebrew (recommended)
+
+```sh
+brew tap darox/swift-audio-switcher
+brew install swift-audio-switcher
+```
+
+Or in one step:
+
+```sh
+brew install darox/swift-audio-switcher/swift-audio-switcher
+```
+
+### From source
+
 ```sh
 git clone https://github.com/darox/swift-audio-switcher.git
 cd swift-audio-switcher
 swift build -c release
-# Binary at: .build/release/swift-audio-switcher
-# Optionally copy to /usr/local/bin:
 sudo cp .build/release/swift-audio-switcher /usr/local/bin/
-```
-
-Or with [Mint](https://github.com/yonaskolb/Mint):
-
-```sh
-mint install darox/swift-audio-switcher
 ```
 
 ## Usage
