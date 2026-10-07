@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build (arm64)
+        run: swift build -c release --arch arm64
+
+      - name: Build (x86_64)
+        run: swift build -c release --arch x86_64
+
+      - name: Create universal binary
+        run: |
+          lipo -create \
+            .build/arm64-apple-macosx/release/swift-audio-switcher \
+            .build/x86_64-apple-macosx/release/swift-audio-switcher \
+            -output swift-audio-switcher
+
+      - name: Strip binary
+        run: strip swift-audio-switcher
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp swift-audio-switcher dist/
+          cp README.md LICENSE.md dist/
+          tar -czf dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz -C dist .
+
+      - name: Compute checksum
+        run: |
+          shasum -a 256 dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz | awk '{print $1}' > dist/SHA256SUMS
+          echo "SHA256SUMS content:"
+          cat dist/SHA256SUMS
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz
+            dist/SHA256SUMS
+          generate_release_notes: true
+          name: Release ${{ github.ref_name }}

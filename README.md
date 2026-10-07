@@ -19,6 +19,17 @@ Or in one step:
 brew install darox/swift-audio-switcher/swift-audio-switcher
 ```
 
+### Pre-built binary
+
+Download the latest universal binary (Apple Silicon + Intel) from [Releases](https://github.com/darox/swift-audio-switcher/releases):
+
+```sh
+# Download, extract, and install
+curl -LO https://github.com/darox/swift-audio-switcher/releases/latest/download/swift-audio-switcher-$(git ls-remote --tags https://github.com/darox/swift-audio-switcher.git | grep -o 'v[0-9.]*' | sort -V | tail -1)-universal.tar.gz
+tar -xzf swift-audio-switcher-*-universal.tar.gz
+sudo mv swift-audio-switcher /usr/local/bin/
+```
+
 ### Mint
 
 ```sh
