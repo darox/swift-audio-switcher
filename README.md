@@ -22,6 +22,7 @@ swift-audio-switcher current           # print the current default device name
 swift-audio-switcher set "Living Room TV"   # switch by exact name or UID
 swift-audio-switcher set -n "Living"        # switch by partial name (first match)
 swift-audio-switcher toggle "Speakers" "TV" # toggle between two devices
+swift-audio-switcher diagnose          # print raw CoreAudio state for troubleshooting
 ```
 
 Example `list` output:
