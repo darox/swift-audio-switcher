@@ -6,36 +6,12 @@ Works with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
 
 ## Install
 
-### Homebrew (recommended)
-
 Requires up-to-date Xcode Command Line Tools (`xcode-select --install`).
 
 ```sh
 brew tap darox/swift-audio-switcher https://github.com/darox/swift-audio-switcher.git
 brew trust darox/swift-audio-switcher   # required once for third-party taps (Homebrew 4.6+)
 brew install swift-audio-switcher
-```
-
-The tap points at this repository directly — no separate tap repo.
-
-### Pre-built binary
-
-Download the universal binary (Apple Silicon + Intel) from [Releases](https://github.com/darox/swift-audio-switcher/releases):
-
-```sh
-VERSION=v1.0.0  # check the Releases page for the latest
-curl -LO "https://github.com/darox/swift-audio-switcher/releases/download/${VERSION}/swift-audio-switcher-${VERSION}-universal.tar.gz"
-tar -xzf swift-audio-switcher-*-universal.tar.gz
-sudo mv swift-audio-switcher /usr/local/bin/
-```
-
-### From source
-
-```sh
-git clone https://github.com/darox/swift-audio-switcher.git
-cd swift-audio-switcher
-swift build -c release
-sudo cp .build/release/swift-audio-switcher /usr/local/bin/
 ```
 
 ## Usage
