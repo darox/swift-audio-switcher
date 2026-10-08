@@ -12,9 +12,11 @@ class SwiftAudioSwitcher < Formula
   def install
     system "swift", "build", "-c", "release", "--disable-sandbox"
     bin.install ".build/release/swift-audio-switcher"
+    bin.install ".build/release/airplay-pick"
   end
 
   test do
     assert_match "Usage", shell_output("#{bin}/swift-audio-switcher --help 2>&1")
+    assert_match "usage", shell_output("#{bin}/airplay-pick --help 2>&1")
   end
 end

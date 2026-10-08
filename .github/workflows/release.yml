@@ -22,18 +22,20 @@ jobs:
       - name: Build (x86_64)
         run: swift build -c release --arch x86_64 --disable-sandbox
 
-      - name: Create universal binary
+      - name: Create universal binaries
         run: |
-          lipo -create \
-            .build/arm64-apple-macosx/release/swift-audio-switcher \
-            .build/x86_64-apple-macosx/release/swift-audio-switcher \
-            -output swift-audio-switcher
-          strip swift-audio-switcher
+          for binary in swift-audio-switcher airplay-pick; do
+            lipo -create \
+              ".build/arm64-apple-macosx/release/${binary}" \
+              ".build/x86_64-apple-macosx/release/${binary}" \
+              -output "${binary}"
+            strip "${binary}"
+          done
 
       - name: Package
         run: |
           mkdir -p dist
-          cp swift-audio-switcher dist/
+          cp swift-audio-switcher airplay-pick dist/
           cp README.md LICENSE.md dist/
           tar -czf dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz -C dist .
           shasum -a 256 dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz \

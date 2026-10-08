@@ -1,8 +1,15 @@
 # swift-audio-switcher
 
-Switch the default macOS audio output device from the command line. Pure Swift, no third-party dependencies — only Apple's CoreAudio framework. No Accessibility permissions, no UI automation.
+Switch the default macOS audio output device from the command line. Pure Swift, no third-party dependencies — only Apple's CoreAudio framework.
 
 Works with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
+
+The package installs two commands:
+
+| Command | Purpose | Permissions |
+| --- | --- | --- |
+| `swift-audio-switcher` | List and set output devices with CoreAudio. | None |
+| `airplay-pick` | Select an AirPlay device, which CoreAudio does not publish until the session starts. | Accessibility |
 
 ## Install
 
@@ -32,37 +39,75 @@ MacBook Pro Speakers (default) [uid: BuiltInSpeakerDevice]
 Living Room TV [uid: AA:BB:CC:DD:EE:FF]
 ```
 
+## AirPlay
+
+macOS does not publish an AirPlay device to CoreAudio until a session runs, and the
+AirPlay device disappears again when the output changes back. No API and no Shortcuts
+action starts that session, so `swift-audio-switcher set "AirPlay"` fails while no
+session runs.
+
+`airplay-pick` therefore makes the choice in System Settings > Sound, which is the only
+place macOS offers a not-yet-active AirPlay device:
+
+```sh
+airplay-pick --list        # list the output devices that Sound offers
+airplay-pick "Living Room" # make that AirPlay device the output device
+```
+
+The command opens the Sound pane, selects the row, and confirms the result through
+CoreAudio. Then `swift-audio-switcher` can switch away from the AirPlay device as usual.
+
+Grant Accessibility permission to the app that runs the command, in System Settings >
+Privacy & Security > Accessibility. A launcher such as Raycast needs one entry; each
+script that Raycast runs then inherits it.
+
 ## Raycast
 
-Create a script command (⌘K → "Create Script Command"):
+Add the script directory in Raycast: Settings > Extensions > Script Commands.
+
+Toggle AirPlay, `audio-toggle-airplay.sh`:
 
 ```bash
 #!/bin/bash
 
 # @raycast.schemaVersion 1
-# @raycast.title AirPlay: Living Room TV
-# @raycast.mode silent
+# @raycast.title Audio: Toggle AirPlay
+# @raycast.description Switch the default audio output between the speakers and an AirPlay device
+# @raycast.mode compact
 # @raycast.icon 🔊
+# @raycast.packageName Audio
 
-/usr/local/bin/swift-audio-switcher set "Living Room TV"
+set -uo pipefail
+
+AUDIO=/opt/homebrew/bin/swift-audio-switcher
+SPEAKERS="MacBook Pro Speakers"
+AIRPLAY_DEVICE="Wohnzimmer"
+STATE="${TMPDIR:-/tmp}/swift-audio-switcher.previous"
+
+current=$("$AUDIO" current 2>/dev/null)
+
+if [ "$current" = "AirPlay" ]; then
+  restore="$SPEAKERS"
+  if [ -r "$STATE" ]; then restore=$(cat "$STATE"); fi
+  "$AUDIO" set "$restore" >/dev/null && echo "Output: $restore"
+  exit 0
+fi
+
+printf '%s' "$current" > "$STATE"
+exec airplay-pick "$AIRPLAY_DEVICE"
 ```
 
-Or a toggle between two devices:
-
-```bash
-#!/bin/bash
-
-# @raycast.schemaVersion 1
-# @raycast.title Toggle Audio Output
-# @raycast.mode silent
-# @raycast.icon 🔀
-
-/usr/local/bin/swift-audio-switcher toggle "MacBook Pro Speakers" "Living Room TV"
-```
+Set `AIRPLAY_DEVICE` to the name that `airplay-pick --list` prints.
 
 ## How it works
 
-Uses the CoreAudio HAL API (`AudioObjectGetPropertyData` / `AudioObjectSetPropertyData`) to enumerate output devices and set `kAudioHardwarePropertyDefaultOutputDevice`.
+`swift-audio-switcher` uses the CoreAudio HAL API (`AudioObjectGetPropertyData` /
+`AudioObjectSetPropertyData`) to enumerate output devices and set
+`kAudioHardwarePropertyDefaultOutputDevice`.
+
+`airplay-pick` reads and drives the System Settings Sound pane through the macOS
+accessibility API, then reads the default output device from CoreAudio again to confirm
+the switch.
 
 ## Release automation
 
@@ -72,7 +117,8 @@ Push a tag to build and publish a release:
 git tag v1.1.0 && git push origin v1.1.0
 ```
 
-GitHub Actions builds a universal binary, creates the GitHub Release, and updates the Homebrew formula automatically.
+GitHub Actions builds a universal binary of each command, creates the GitHub Release, and
+updates the Homebrew formula automatically.
 
 ## License
 
