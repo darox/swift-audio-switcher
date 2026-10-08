@@ -1,7 +1,7 @@
 import CoreAudio
 import Foundation
 
-let version = "1.1.1"
+let version = "1.1.2"
 
 // MARK: - Errors
 

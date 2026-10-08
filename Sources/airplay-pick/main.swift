@@ -138,9 +138,19 @@ func closeSoundWindow() {
 }
 
 func openSoundPane() {
-    if let url = URL(string: "x-apple.systempreferences:com.apple.Sound-Settings.extension") {
-        NSWorkspace.shared.open(url)
-    }
+    let open = Process()
+    open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+    open.arguments = ["-a", "System Settings", "x-apple.systempreferences:com.apple.Sound-Settings.extension"]
+    try? open.run()
+    open.waitUntilExit()
+}
+
+/// The pane scans for AirPlay devices when it opens, so close it and open it again.
+func refreshSoundPane() {
+    closeSoundWindow()
+    usleep(500_000)
+    openSoundPane()
+    raiseSystemSettings()
 }
 
 func raiseSystemSettings() {
@@ -188,10 +198,10 @@ func row(named name: String) -> (element: AXUIElement, name: String, kind: Strin
     outputRows().first { $0.name.localizedCaseInsensitiveContains(name) }
 }
 
-func waitForRow(named name: String, seconds: Double) -> Bool {
+func waitForRows(seconds: Double) -> Bool {
     let deadline = Date().addingTimeInterval(seconds)
     while Date() < deadline {
-        if row(named: name) != nil { return true }
+        if !outputRows().isEmpty { return true }
         usleep(200_000)
     }
     return false
@@ -216,14 +226,10 @@ func pick(_ name: String, attempts: Int) -> String? {
 
 var result = pick(wanted, attempts: 2)
 
-if result == nil {
-    // The pane scans for AirPlay devices when it opens, so retry with a fresh pane.
-    closeSoundWindow()
-    usleep(400_000)
-    openSoundPane()
-    raiseSystemSettings()
-    _ = waitForRow(named: wanted, seconds: 25)
-    result = pick(wanted, attempts: 3)
+for _ in 0..<3 where result == nil {
+    refreshSoundPane()
+    guard waitForRows(seconds: 20) else { continue }
+    result = pick(wanted, attempts: 2)
 }
 
 previousApplication?.activate()
