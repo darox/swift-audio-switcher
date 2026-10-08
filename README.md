@@ -1,6 +1,6 @@
 # swift-audio-switcher
 
-Set the macOS audio output from the command line, including AirPlay devices.
+Set the macOS audio output from the command line. It also sets AirPlay devices.
 
 ## Why
 
