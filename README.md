@@ -9,14 +9,13 @@ Use it with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
 ### Homebrew (recommended)
 
 ```sh
-brew tap darox/swift-audio-switcher
-brew install swift-audio-switcher
+brew install https://raw.githubusercontent.com/darox/swift-audio-switcher/main/Formula/swift-audio-switcher.rb
 ```
 
-Or in one step:
+To upgrade later:
 
 ```sh
-brew install darox/swift-audio-switcher/swift-audio-switcher
+brew upgrade swift-audio-switcher
 ```
 
 ### Pre-built binary
