@@ -14,11 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build
-        run: swift build -c release
+      - name: Build (arm64)
+        run: swift build -c release --arch arm64
+
+      - name: Build (x86_64)
+        run: swift build -c release --arch x86_64
 
       - name: Run --help smoke test
-        run: .build/release/swift-audio-switcher --help
+        run: .build/arm64-apple-macosx/release/swift-audio-switcher --help
 
       - name: Run list (may be empty on CI runners)
-        run: .build/release/swift-audio-switcher list || true
+        run: .build/arm64-apple-macosx/release/swift-audio-switcher list || true

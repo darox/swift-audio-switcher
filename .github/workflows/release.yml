@@ -11,16 +11,16 @@ permissions:
 jobs:
   build:
     name: Build and release
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Build (arm64)
-        run: swift build -c release --arch arm64
+        run: swift build -c release --arch arm64 --disable-sandbox
 
       - name: Build (x86_64)
-        run: swift build -c release --arch x86_64
+        run: swift build -c release --arch x86_64 --disable-sandbox
 
       - name: Create universal binary
         run: |
@@ -42,8 +42,6 @@ jobs:
       - name: Compute checksum
         run: |
           shasum -a 256 dist/swift-audio-switcher-${{ github.ref_name }}-universal.tar.gz | awk '{print $1}' > dist/SHA256SUMS
-          echo "SHA256SUMS content:"
-          cat dist/SHA256SUMS
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
