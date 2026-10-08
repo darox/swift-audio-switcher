@@ -10,14 +10,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "swift-audio-switcher",
-            path: "Sources/swift-audio-switcher",
-            cSettings: [
-                .unsafeFlags(["-Wno-deprecated-declarations"])
-            ],
-            linkerSettings: [
-                .linkedFramework("CoreAudio"),
-                .linkedFramework("CoreFoundation"),
-            ]
+            path: "Sources/swift-audio-switcher"
         )
     ]
 )

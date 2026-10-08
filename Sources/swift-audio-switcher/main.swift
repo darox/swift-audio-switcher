@@ -1,26 +1,77 @@
 import Foundation
 import CoreFoundation
+import CoreAudio
+import Darwin
 
-// MARK: - C shim declarations
-
-@_silgen_name("sas_get_all_devices") func sas_get_all_devices(_ ids: UnsafeMutablePointer<UnsafeMutablePointer<UInt32>?>, _ count: UnsafeMutablePointer<UInt32>) -> Int32
-@_silgen_name("sas_get_default_output") func sas_get_default_output(_ id: UnsafeMutablePointer<UInt32>) -> Int32
-@_silgen_name("sas_set_default_output") func sas_set_default_output(_ id: UInt32) -> Int32
-@_silgen_name("sas_get_device_name") func sas_get_device_name(_ id: UInt32, _ out: UnsafeMutableRawPointer) -> Int32
-@_silgen_name("sas_get_device_uid") func sas_get_device_uid(_ id: UInt32, _ out: UnsafeMutableRawPointer) -> Int32
-@_silgen_name("sas_device_has_output") func sas_device_has_output(_ id: UInt32, _ has: UnsafeMutablePointer<Int32>) -> Int32
-@_silgen_name("sas_device_can_be_default") func sas_device_can_be_default(_ id: UInt32, _ can: UnsafeMutablePointer<Int32>) -> Int32
+// MARK: - CoreAudio via dlsym
+//
+// The deprecated C API (AudioHardwareGetProperty, AudioDeviceGetProperty, etc.)
+// still works on current macOS but is marked unavailable in Swift and may not
+// compile on all SDK versions. We call them via dlsym at runtime instead.
 
 // MARK: - Error type
 
 struct SasError: Error, CustomStringConvertible {
     let code: Int32
-    var description: String { "CoreAudio error \(code)" }
+    let fn: String
+    var description: String { "CoreAudio error \(code) in \(fn)" }
 }
 
-func check(_ status: Int32, _ what: String) throws {
-    guard status == 0 else { throw SasError(code: status) }
+func check(_ status: OSStatus, _ fn: String) throws {
+    guard status == 0 else { throw SasError(code: status, fn: fn) }
 }
+
+// MARK: - Function pointer types
+
+typealias GetPropertyInfoFn = @convention(c) (UInt32, UnsafeMutablePointer<UInt32>?, UnsafeMutablePointer<Bool>?) -> OSStatus
+typealias GetPropertyFn = @convention(c) (UInt32, UnsafeMutablePointer<UInt32>?, UnsafeMutableRawPointer?) -> OSStatus
+typealias SetPropertyFn = @convention(c) (UInt32, UInt32, UnsafeRawPointer?) -> OSStatus
+typealias DeviceGetPropertyInfoFn = @convention(c) (UInt32, UInt32, Bool, UInt32, UnsafeMutablePointer<UInt32>?, UnsafeMutablePointer<Bool>?) -> OSStatus
+typealias DeviceGetPropertyFn = @convention(c) (UInt32, UInt32, Bool, UInt32, UnsafeMutablePointer<UInt32>?, UnsafeMutableRawPointer?) -> OSStatus
+typealias DeviceSetPropertyFn = @convention(c) (UInt32, UInt32, Bool, UInt32, UInt32, UnsafeRawPointer?) -> OSStatus
+
+// MARK: - CoreAudio symbols loaded via dlsym
+
+final class CoreAudioAPI {
+    static let shared = CoreAudioAPI()
+
+    let audioHardwareGetPropertyInfo: GetPropertyInfoFn
+    let audioHardwareGetProperty: GetPropertyFn
+    let audioHardwareSetProperty: SetPropertyFn
+    let audioDeviceGetPropertyInfo: DeviceGetPropertyInfoFn
+    let audioDeviceGetProperty: DeviceGetPropertyFn
+    let audioDeviceSetProperty: DeviceSetPropertyFn
+
+    private init() {
+        let path = "/System/Library/Frameworks/CoreAudio.framework/CoreAudio"
+        guard let handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL) else {
+            let err = dlerror()
+            fatalError("Failed to load CoreAudio: \(err != nil ? String(cString: err!) : "unknown")")
+        }
+        func sym<T>(_ name: String, as type: T.Type) -> T {
+            guard let ptr = dlsym(handle, name) else {
+                fatalError("Symbol not found: \(name)")
+            }
+            return unsafeBitCast(ptr, to: T.self)
+        }
+        audioHardwareGetPropertyInfo = sym("AudioHardwareGetPropertyInfo", as: GetPropertyInfoFn.self)
+        audioHardwareGetProperty = sym("AudioHardwareGetProperty", as: GetPropertyFn.self)
+        audioHardwareSetProperty = sym("AudioHardwareSetProperty", as: SetPropertyFn.self)
+        audioDeviceGetPropertyInfo = sym("AudioDeviceGetPropertyInfo", as: DeviceGetPropertyInfoFn.self)
+        audioDeviceGetProperty = sym("AudioDeviceGetProperty", as: DeviceGetPropertyFn.self)
+        audioDeviceSetProperty = sym("AudioDeviceSetProperty", as: DeviceSetPropertyFn.self)
+    }
+}
+
+let ca = CoreAudioAPI.shared
+
+// Property selector constants (fourcc values from CoreAudio headers)
+private let kAudioHardwarePropertyDevices: UInt32 = 0x64657623        // 'dev#'
+private let kAudioHardwarePropertyDefaultOutputDevice: UInt32 = 0x644F7574 // 'dOut'
+private let kAudioDevicePropertyStreamConfiguration: UInt32 = 0x736C6179   // 'slay'
+private let kAudioDevicePropertyDeviceCanBeDefaultDevice: UInt32 = 0x64666C74 // 'dflt'
+private let kAudioDevicePropertyDeviceNameCFString: UInt32 = 0x6C6E616D     // 'lnam'
+private let kAudioDevicePropertyDeviceUID: UInt32 = 0x75696420             // 'uid '
 
 // MARK: - Device model
 
@@ -35,39 +86,63 @@ struct AudioDevice: CustomStringConvertible {
     }
 }
 
-func readCFString(_ ptr: UnsafeMutableRawPointer?) -> String {
-    guard let ptr = ptr else { return "" }
-    return Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
-}
-
 // MARK: - Device enumeration
 
 func listOutputDevices() throws -> [AudioDevice] {
+    // Get default output device
     var defaultID: UInt32 = 0
-    try check(sas_get_default_output(&defaultID), "get default output")
+    var defSize = UInt32(MemoryLayout<UInt32>.size)
+    try check(ca.audioHardwareGetProperty(kAudioHardwarePropertyDefaultOutputDevice, &defSize, &defaultID),
+              "AudioHardwareGetProperty(DefaultOutput)")
 
-    var rawIDs: UnsafeMutablePointer<UInt32>? = nil
-    var count: UInt32 = 0
-    try check(sas_get_all_devices(&rawIDs, &count), "get all devices")
-    defer { rawIDs?.deallocate() }
+    // Get all device IDs
+    var listSize: UInt32 = 0
+    try check(ca.audioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &listSize, nil),
+              "AudioHardwareGetPropertyInfo(Devices)")
+    guard listSize > 0 else { return [] }
 
-    guard let rawIDs = rawIDs, count > 0 else { return [] }
-    let ids = Array(UnsafeBufferPointer(start: rawIDs, count: Int(count)))
+    let idsPtr = UnsafeMutableRawPointer.allocate(byteCount: Int(listSize), alignment: 8)
+    defer { idsPtr.deallocate() }
+    var sz = listSize
+    try check(ca.audioHardwareGetProperty(kAudioHardwarePropertyDevices, &sz, idsPtr),
+              "AudioHardwareGetProperty(Devices)")
+    let count = Int(sz) / MemoryLayout<UInt32>.size
+    let ids = Array(UnsafeBufferPointer(start: idsPtr.assumingMemoryBound(to: UInt32.self), count: count))
 
     var devices: [AudioDevice] = []
     for id in ids {
-        var hasOutput: Int32 = 0
-        var canDefault: Int32 = 0
-        _ = sas_device_has_output(id, &hasOutput)
-        _ = sas_device_can_be_default(id, &canDefault)
-        guard hasOutput == 1, canDefault == 1 else { continue }
+        // Check if device has output streams
+        var streamSize: UInt32 = 0
+        let streamSt = ca.audioDeviceGetPropertyInfo(id, 0, false, kAudioDevicePropertyStreamConfiguration, &streamSize, nil)
+        guard streamSt == 0, streamSize > 0 else { continue }
 
+        // Check if device can be default output
+        var canDefault: UInt32 = 0
+        var cdSize = UInt32(MemoryLayout<UInt32>.size)
+        let cdSt = ca.audioDeviceGetProperty(id, 0, false, kAudioDevicePropertyDeviceCanBeDefaultDevice, &cdSize, &canDefault)
+        guard cdSt == 0, canDefault != 0 else { continue }
+
+        // Get name and UID (CFStringRef properties)
+        var nameSize = UInt32(MemoryLayout<CFString>.size)
         var namePtr: UnsafeMutableRawPointer? = nil
+        _ = ca.audioDeviceGetProperty(id, 0, false, kAudioDevicePropertyDeviceNameCFString, &nameSize, &namePtr)
+        let name: String
+        if let ptr = namePtr {
+            name = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+        } else {
+            name = "Unknown"
+        }
+
+        var uidSize = UInt32(MemoryLayout<CFString>.size)
         var uidPtr: UnsafeMutableRawPointer? = nil
-        _ = sas_get_device_name(id, &namePtr)
-        _ = sas_get_device_uid(id, &uidPtr)
-        let name = readCFString(namePtr).isEmpty ? "Unknown" : readCFString(namePtr)
-        let uid = readCFString(uidPtr)
+        _ = ca.audioDeviceGetProperty(id, 0, false, kAudioDevicePropertyDeviceUID, &uidSize, &uidPtr)
+        let uid: String
+        if let ptr = uidPtr {
+            uid = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
+        } else {
+            uid = ""
+        }
+
         devices.append(AudioDevice(id: id, uid: uid, name: name, isDefault: id == defaultID))
     }
     return devices
@@ -107,7 +182,9 @@ func findDevice(by query: String, fuzzy: Bool) throws -> AudioDevice {
 }
 
 func setDefault(_ device: AudioDevice) throws {
-    try check(sas_set_default_output(device.id), "set default output")
+    var id = device.id
+    try check(ca.audioHardwareSetProperty(kAudioHardwarePropertyDefaultOutputDevice, UInt32(MemoryLayout<UInt32>.size), &id),
+              "AudioHardwareSetProperty(DefaultOutput)")
     print("Switched to: \(device.name)")
 }
 
