@@ -8,12 +8,16 @@ Use it with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
 
 ### Homebrew (recommended)
 
+Requires up-to-date Xcode Command Line Tools (`xcode-select --install`).
+
 ```sh
 brew tap darox/swift-audio-switcher https://github.com/darox/swift-audio-switcher.git
+brew trust darox/swift-audio-switcher
 brew install swift-audio-switcher
 ```
 
 This taps the main repository directly (no separate tap repo needed).
+`brew trust` is required once for third-party taps on Homebrew 4.6+.
 
 To upgrade later:
 
