@@ -2,7 +2,7 @@
 
 Switch the default macOS audio output device from the command line. Pure Swift, no third-party dependencies — only Apple's CoreAudio framework.
 
-Works with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
+Tested with a Raycast script command.
 
 The package installs two commands:
 
@@ -108,17 +108,6 @@ Set `AIRPLAY_DEVICE` to the name that `airplay-pick --list` prints.
 `airplay-pick` reads and drives the System Settings Sound pane through the macOS
 accessibility API, then reads the default output device from CoreAudio again to confirm
 the switch.
-
-## Release automation
-
-Push a tag to build and publish a release:
-
-```sh
-git tag v1.1.0 && git push origin v1.1.0
-```
-
-GitHub Actions builds a universal binary of each command, creates the GitHub Release, and
-updates the Homebrew formula automatically.
 
 ## License
 
