@@ -19,7 +19,6 @@ jobs:
         run: |
           TAG="${{ github.event.release.tag_name }}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          # Download the source tarball (same URL the formula uses)
           curl -sL "https://github.com/darox/swift-audio-switcher/archive/refs/tags/${TAG}.tar.gz" -o /tmp/source.tar.gz
           SHA=$(shasum -a 256 /tmp/source.tar.gz | awk '{print $1}')
           echo "Source tarball SHA256: $SHA"
@@ -27,9 +26,7 @@ jobs:
 
       - name: Update formula
         run: |
-          # Update the version tag in the URL
           sed -i '' "s|refs/tags/v[0-9.]*|refs/tags/${TAG}|g" Formula/swift-audio-switcher.rb
-          # Replace the sha256 line (match any existing sha256 line)
           sed -i '' "s|sha256 \"[a-f0-9]*\"|sha256 \"${SHA}\"|g" Formula/swift-audio-switcher.rb
           echo "--- Updated formula ---"
           cat Formula/swift-audio-switcher.rb

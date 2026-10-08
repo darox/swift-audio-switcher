@@ -9,8 +9,11 @@ Use it with Raycast, Hammerspoon, Keyboard Maestro, or any launcher.
 ### Homebrew (recommended)
 
 ```sh
-brew install https://raw.githubusercontent.com/darox/swift-audio-switcher/main/Formula/swift-audio-switcher.rb
+brew tap darox/swift-audio-switcher https://github.com/darox/swift-audio-switcher.git
+brew install swift-audio-switcher
 ```
+
+This taps the main repository directly (no separate tap repo needed).
 
 To upgrade later:
 
@@ -18,13 +21,19 @@ To upgrade later:
 brew upgrade swift-audio-switcher
 ```
 
+Or install in one step without tapping:
+
+```sh
+brew install https://raw.githubusercontent.com/darox/swift-audio-switcher/main/Formula/swift-audio-switcher.rb
+```
+
 ### Pre-built binary
 
 Download the latest universal binary (Apple Silicon + Intel) from [Releases](https://github.com/darox/swift-audio-switcher/releases):
 
 ```sh
-# Download, extract, and install
-curl -LO https://github.com/darox/swift-audio-switcher/releases/latest/download/swift-audio-switcher-$(git ls-remote --tags https://github.com/darox/swift-audio-switcher.git | grep -o 'v[0-9.]*' | sort -V | tail -1)-universal.tar.gz
+VERSION=v1.0.0  # check the Releases page for the latest
+curl -LO "https://github.com/darox/swift-audio-switcher/releases/download/${VERSION}/swift-audio-switcher-${VERSION}-universal.tar.gz"
 tar -xzf swift-audio-switcher-*-universal.tar.gz
 sudo mv swift-audio-switcher /usr/local/bin/
 ```
