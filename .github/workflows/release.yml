@@ -56,15 +56,16 @@ jobs:
       - name: Update Homebrew formula
         env:
           TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -sL "https://github.com/darox/swift-audio-switcher/archive/refs/tags/${TAG}.tar.gz" -o /tmp/source.tar.gz
+          curl -sL -H "Authorization: Bearer ${GH_TOKEN}" "https://github.com/darox/swift-audio-switcher/archive/refs/tags/${TAG}.tar.gz" -o /tmp/source.tar.gz
           SHA=$(shasum -a 256 /tmp/source.tar.gz | awk '{print $1}')
           echo "source tarball sha256: ${SHA}"
 
           git fetch origin main
           git checkout -B main origin/main
 
-          sed -i '' "s|refs/tags/v[0-9.]*|refs/tags/${TAG}|g" Formula/swift-audio-switcher.rb
+          sed -i '' "s|refs/tags/v[0-9][0-9.]*\.tar\.gz|refs/tags/${TAG}.tar.gz|g" Formula/swift-audio-switcher.rb
           sed -i '' "s|sha256 \"[a-f0-9]*\"|sha256 \"${SHA}\"|g" Formula/swift-audio-switcher.rb
           cat Formula/swift-audio-switcher.rb
 
