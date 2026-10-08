@@ -1,8 +1,8 @@
 class SwiftAudioSwitcher < Formula
   desc "Switch the default macOS audio output device from the command line"
   homepage "https://github.com/darox/swift-audio-switcher"
-  url "https://github.com/darox/swift-audio-switcher/archive/refs/tags/v1.0.1.tar.gz"
-  sha256 "9ac080c6bb82142d129d42e27d0d8b1daf0d0c029f7c4cc57d345bf4ff1ade87"
+  url "https://github.com/darox/swift-audio-switcher/archive/refs/tags/v1.0.2tar.gz"
+  sha256 "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
   license "MIT"
   head "https://github.com/darox/swift-audio-switcher.git", branch: "main"
 
