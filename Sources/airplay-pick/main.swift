@@ -188,16 +188,25 @@ func row(named name: String) -> (element: AXUIElement, name: String, kind: Strin
     outputRows().first { $0.name.localizedCaseInsensitiveContains(name) }
 }
 
-func pick(_ name: String) -> String? {
-    for attempt in 1...3 {
+func waitForRow(named name: String, seconds: Double) -> Bool {
+    let deadline = Date().addingTimeInterval(seconds)
+    while Date() < deadline {
+        if row(named: name) != nil { return true }
+        usleep(200_000)
+    }
+    return false
+}
+
+func pick(_ name: String, attempts: Int) -> String? {
+    for attempt in 1...attempts {
         guard let target = row(named: name) else { return nil }
         raiseSystemSettings()
         usleep(attempt == 1 ? 700_000 : 400_000)
         guard let point = centre(target.element) else { return nil }
         click(point)
 
-        // The switch happens shortly after the click; wait for CoreAudio to agree.
-        for _ in 0..<16 {
+        // The switch starts shortly after the click; wait for CoreAudio to agree.
+        for _ in 0..<25 {
             usleep(200_000)
             if let now = defaultOutputName(), now != before { return now }
         }
@@ -205,24 +214,22 @@ func pick(_ name: String) -> String? {
     return nil
 }
 
-var result = pick(wanted)
+var result = pick(wanted, attempts: 2)
 
 if result == nil {
-    // The output list is refreshed when the pane is opened, so retry with a fresh pane.
+    // The pane scans for AirPlay devices when it opens, so retry with a fresh pane.
     closeSoundWindow()
     usleep(400_000)
     openSoundPane()
-    for _ in 0..<30 {
-        usleep(400_000)
-        if row(named: wanted) != nil { break }
-    }
-    result = pick(wanted)
+    raiseSystemSettings()
+    _ = waitForRow(named: wanted, seconds: 25)
+    result = pick(wanted, attempts: 3)
 }
 
 previousApplication?.activate()
 
 guard let output = result else {
     let seen = outputRows().map { "\($0.name) (\($0.kind))" }.joined(separator: ", ")
-    fail("Could not switch to \"\(wanted)\".\nOutput devices listed: \(seen.isEmpty ? "none" : seen)")
+    fail("Could not switch to \"\(wanted)\" in System Settings > Sound.\nOutput devices listed: \(seen.isEmpty ? "none" : seen)")
 }
 print("Output: \(output)")
