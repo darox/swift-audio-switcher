@@ -235,7 +235,7 @@ do {
         print("Switched to: \(device.name)")
 
     case "toggle", "-t":
-        let rest = Array(arguments.dropFirst(2))
+        let rest = Array(arguments.dropFirst())
         guard rest.count == 2 else {
             fail("Usage: swift-audio-switcher toggle <device-a> <device-b>")
         }
